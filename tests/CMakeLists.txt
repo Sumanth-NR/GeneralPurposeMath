@@ -1,0 +1,9 @@
+add_executable(test_polynomial test_polynomial.cpp)
+target_link_libraries(test_polynomial polynomial)
+target_link_libraries(test_polynomial number_theory)
+
+add_executable(test_number_theory test_number_theory.cpp)
+target_link_libraries(test_number_theory number_theory)
+
+add_executable(test_matrix test_matrix.cpp)
+target_link_libraries(test_matrix sig)

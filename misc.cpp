@@ -1,20 +1,18 @@
-#include <bits/stdc++.h>
+#include <iostream>
+#include <sig.hpp>
 using namespace std;
+using namespace Sig;
 
-class Solution {
-public:
-	vector<int> searchRange(vector<int> &nums, int target) {
-		int l = lower_bound(nums.begin(), nums.end(), target) - nums.begin();
-		if (l == nums.size()) return { -1, -1 };
-		int r = upper_bound(nums.begin(), nums.end(), target + 1) - nums.begin() - 1;
-		return { l, r };
-	}
-};
+template<typename F>
+void func(const Matrix<F> &mt) {
+    // Do shit
+    auto [m, n] = mt.shape();
+    cout << m << ' ' << n << '\n';
+}
 
 int main() {
-	int t; cin >> t;
-	Solution s;
-	vector<int> ans = s.searchRange({5, 7, 7, 8, 8, 10}, 8);
-	cout << ans[0] << ' ' << ans[1] << '\n';
-	return 0;
+    Matrix<int> m(5, 8);
+    Matrix<double> x({{1, 2}, {4, 5}, {6, 0}});
+    Matrix<double> y({{2, 3, 6}, {6, 7, 9}});
+    cout << x*y;
 }
