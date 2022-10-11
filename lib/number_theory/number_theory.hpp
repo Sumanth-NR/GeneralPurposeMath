@@ -43,7 +43,7 @@ ModInt tonelliShanks(const ModInt &b) {
     Int m = p - 1, k = 1;
     while(m%2 == 0)
         m /= 2, k++;
-
+    return T(0);
 }
 
 }
