@@ -21,11 +21,16 @@ class Matrix {
 protected:
 	void swapRows(int r1, int r2) {
 		F temp;
-		for (int i = 0; i < mat[i].size(); i++) {
+		for (int i = 0; i < getNumCols(); i++) {
 			temp = mat[r1][i];
 			mat[r1][i] = mat[r2][i];
 			mat[r2][i] = temp;
 		}
+	}
+
+	void verifySquare() const {
+		if (getNumRows() != getNumCols())
+			throw std::invalid_argument("Matrix is not square");
 	}
 public:
 	Matrix() { mat = {{0}}; }
@@ -35,23 +40,23 @@ public:
 
 	static Matrix<F> eye(const int &n) {
 		Matrix<F> ans(n, n);
-		for (int i = 0; i < n; i++) ans[i][i] = 1;
+		for (int i = 0; i < n; i++) ans.mat[i][i] = 1;
 		return ans;
 	}
 
 	void cleanReShape(const int &rowSize, const int &colSize) {
 		if (rowSize <= 0 or colSize <= 0)
-			throw invalid_argument("Row Size and Column Sizes must be positive");
+			throw std::invalid_argument("Row Size and Column Sizes must be positive");
 		mat.resize(rowSize, vector<F>(colSize));
 	}
 
-	int getNumRows() const { return mat.size(); }
-	int getNumCols() const { return mat[0].size(); }
+	[[nodiscard]] int getNumRows() const { return mat.size(); }
+	[[nodiscard]] int getNumCols() const { return mat[0].size(); }
 	[[nodiscard]] pair<int, int> shape() const { return { getNumRows(), getNumCols() }; }
 
 	friend Matrix<F> operator + (const Matrix<F> &a, const Matrix<F> &b) {
 		if (a.shape() != b.shape())
-			throw invalid_argument("The matrices must have the same shape for adding");
+			throw std::invalid_argument("The matrices must have the same shape for adding");
 		Matrix<F> ans(a.shape());
 		for (int i = 0; i < a.getNumRows(); i++)
 			for (int j = 0; j < a.getNumCols(); j++)
@@ -61,7 +66,7 @@ public:
 
 	friend Matrix<F> operator - (const Matrix<F> &a, const Matrix<F> &b) {
 		if (a.shape() != b.shape())
-			throw invalid_argument("The matrices must have the same shape for adding");
+			throw std::invalid_argument("The matrices must have the same shape for adding");
 		Matrix<F> ans(a.shape());
 		for (int i = 0; i < a.getNumRows(); i++)
 			for (int j = 0; j < a.getNumCols(); j++)
@@ -71,7 +76,7 @@ public:
 
 	friend Matrix<F> operator * (const Matrix<F> &a, const Matrix<F> &b) {
 		if (a.shape().second != b.shape().first)
-			throw invalid_argument("The matrices must have the same shape for adding");
+			throw std::invalid_argument("The matrix sizes not appropriate for multiplication");
 		Matrix<F> ans(a.getNumRows(), b.getNumCols());
 		for (int i = 0; i < a.getNumRows(); i++)
 			for (int j = 0; j < b.getNumCols(); j++)
@@ -104,7 +109,7 @@ public:
 	 */
 	Matrix<F> transUTFailed(bool inplace = false) {
 		if (getNumRows() < getNumCols())
-			throw invalid_argument("The matrix must have more rows than columns");
+			throw std::invalid_argument("The matrix must have more rows than columns");
 		vector<vector<F>> &A = inplace ? mat : * new vector<vector<F>>(mat);
 		Matrix<F> T = eye(getNumRows());
 		for (int i = 0; i < getNumRows(); i++) {
@@ -130,31 +135,30 @@ public:
 	 * @param A Matrix A
 	 * @param B Matrix B
 	 */
-	static void transUT(Matrix<F> &A, Matrix<F> &B) {
+	static void gaussUT(Matrix<F> &A, Matrix<F> &B) {
 		if (B.getNumRows() != A.getNumRows())
-			throw invalid_argument("The matrices must have the same number of rows");
-		// Handles at row i and column c
-		for (int i = 0, c = 0; i < A.getNumRows() and c < A.getNumCols(); c++, i++) {
-			// Find the first non-zero element in the k-th column
-			if (A.mat[i][c] == F(0)) {
-				for (int j = i + 1; j < A.getNumRows(); j++) {
-					if (A.mat[j][c] != F(0)) {
-						A.swapRows(i, j);
-						B.swapRows(i, j);
-						break;
-					}
+			throw std::invalid_argument("The matrices must have the same number of rows");
+		// Handles at row i1 and column j1
+		for (int i1 = 0, j1 = 0; i1 < A.getNumRows() and j1 < A.getNumCols(); j1++, i1++) {
+			// Find the first non-zero element in the j2-th column
+			for (int i2 = i1; i2 < A.getNumRows(); i2++) {
+				if (A.mat[i2][j1] != F(0)) {
+					A.swapRows(i1, i2);
+					B.swapRows(i1, i2);
+					break;
 				}
 			}
-			if (A.mat[i][c] == F(0)) {
-				i--;
+			if (A.mat[i1][j1] == F(0)) {
+				i1--;
 				continue;
 			}
-			// Make all the elements in the k-th column below the i-th row zero
-			for (int j = i + 1; j < A.getNumRows(); j++) {
-				for (int k = c; k < A.getNumCols(); k++)
-					A.mat[j][k] = A.mat[i][c] * A.mat[j][k] - A.mat[j][c] * A.mat[i][k];
-				for (int k = 0; k < B.getNumCols(); k++)
-					B.mat[j][k] = A.mat[i][c] * B.mat[j][k] - B.mat[j][c] * B.mat[i][k];
+			// Make all the elements in the j2-th column below the i1-th row zero
+			for (int i2 = i1 + 1; i2 < A.getNumRows(); i2++) {
+				for (int j2 = j1 + 1; j2 < A.getNumCols(); j2++)
+					A.mat[i2][j2] -= A.mat[i2][j1] * A.mat[i1][j2] / A.mat[i1][j1];
+				for (int j2 = 0; j2 < B.getNumCols(); j2++)
+					B.mat[i2][j2] -= A.mat[i2][j1] * B.mat[i1][j2] / A.mat[i1][j1];
+				A.mat[i2][j1] = F(0);
 			}
 		}
 	}
@@ -165,31 +169,30 @@ public:
 	 * @param A Matrix A
 	 * @param B Matrix B
 	 */
-	static void transLT(Matrix<F> &A, Matrix<F> &B) {
+	static void gaussLT(Matrix<F> &A, Matrix<F> &B) {
 		if (B.getNumRows() != A.getNumRows())
-			throw invalid_argument("The matrices must have the same number of rows");
-		// Handles at row i and column c
-		for (int i = A.getNumRows() - 1, c = A.getNumCols() - 1; i >= 0 and c >= 0; i--, c--) {
+			throw std::invalid_argument("The matrices must have the same number of rows");
+		// Handles at row i1 and column j1
+		for (int i1 = A.getNumRows() - 1, j1 = A.getNumCols() - 1; i1 >= 0 and j1 >= 0; i1--, j1--) {
 			// Find the first non-zero element in the k-th column
-			if (A.mat[i][c] == F(0)) {
-				for (int j = i - 1; j >= 0; j--) {
-					if (A.mat[j][c] != F(0)) {
-						A.swapRows(i, j);
-						B.swapRows(i, j);
-						break;
-					}
+			for (int i2 = i1; i2 >= 0; i2--) {
+				if (A.mat[i2][j1] != F(0)) {
+					A.swapRows(i1, i2);
+					B.swapRows(i1, i2);
+					break;
 				}
 			}
-			if (A.mat[i][c] == F(0)) {
-				i++;
+			if (A.mat[i1][j1] == F(0)) {
+				i1++;
 				continue;
 			}
 			// Make all the elements in the k-th column above the i-th row zero
-			for (int j = i - 1; j >= 0; j--) {
-				for (int k = c; k >= 0; k--)
-					A.mat[j][k] = A.mat[i][c] * A.mat[j][k] - A.mat[j][c] * A.mat[i][k];
-				for (int k = 0; k < B.getNumCols(); k++)
-					B.mat[j][k] = A.mat[i][c] * B.mat[j][k] - B.mat[j][c] * B.mat[i][k];
+			for (int i2 = i1 - 1; i2 >= 0; i2--) {
+				for (int j2 = j1 - 1; j2 >= 0; j2--)
+					A.mat[i2][j2] -= A.mat[i2][j1] * A.mat[i1][j2] / A.mat[i1][j1];
+				for (int j2 = 0; j2 < B.getNumCols(); j2++)
+					B.mat[i2][j2] -= A.mat[i2][j1] * B.mat[i1][j2] / A.mat[i1][j1];
+				A.mat[i2][j1] = F(0);
 			}
 		}
 	}
@@ -199,8 +202,61 @@ public:
 	 *   and simultaneously applies the same operations to the matrix B
 	 */
 	static void reduceDiag(Matrix<F> &A, Matrix<F> &B) {
-		Matrix<F>::transUT(A, B);
-		Matrix<F>::transLT(A, B);
+		A.verifySquare();
+		Matrix<F>::gaussLT(A, B);
+		Matrix<F>::gaussUT(A, B);
+	}
+
+	static void reduceIdentity(Matrix<F> &A, Matrix &B) {
+		reduceDiag(A, B);
+		if (A.mat[A.getNumRows()-1][A.getNumCols()-1] == F(0))
+			throw std::invalid_argument("The Matrix is singular");
+		for (int i = 0; i < A.getNumRows(); i++) {
+			for (int j = 0; j < A.getNumCols(); j++)
+				B.mat[i][j] /= A.mat[i][i];
+			A.mat[i][i] = F(1);
+		}
+	}
+
+	Matrix<F> gaussianInverse() {
+		verifySquare();
+		Matrix<F> B = eye(getNumRows());
+		Matrix<F> A = *this;
+		reduceIdentity(A, B);
+		return B;
+	}
+
+	/**
+	 * Solves X = A^-1B using Gaussian Elimination
+	 * @param B Row matrix having the same number of
+	 * @return A^-1 * B
+	 */
+	Matrix<F> solveGaussian(const Matrix<F> &B) {
+		verifySquare();
+		if (B.getNumRows() != getNumRows())
+			throw std::invalid_argument("The matrices must have the same number of rows");
+		Matrix<F> A1 = *this;
+		Matrix<F> B1 = B;
+		reduceIdentity(A1, B1);
+		return B1;
+	}
+
+	/**
+	 * LU Decomposition
+	 * @return A pair of matrices (L, U) such that A = L * U
+	 */
+	std::pair<Matrix<F>, Matrix<F>> LU() {
+		verifySquare();
+		Matrix<F> L = eye(getNumRows());
+		Matrix<F> U = *this;
+		for (int i = 0; i < getNumRows(); i++) {
+			for (int j = i + 1; j < getNumRows(); j++) {
+				L.mat[j][i] = U.mat[j][i] / U.mat[i][i];
+				for (int k = i; k < getNumRows(); k++)
+					U.mat[j][k] -= L.mat[j][i] * U.mat[i][k];
+			}
+		}
+		return { L, U };
 	}
 };
 
