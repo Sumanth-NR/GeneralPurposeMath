@@ -3,6 +3,7 @@
 #include <utility>
 #include <tuple>
 #include <vector>
+#include <cmath>
 
 using std::vector;
 using std::pair;
@@ -32,18 +33,96 @@ protected:
 		if (getNumRows() != getNumCols())
 			throw std::invalid_argument("Matrix is not square");
 	}
+
+	/**
+	 * Transforms column c1 and column c2 into \n
+	 * c1 = f1*c1 + f2*c2 \n
+	 * c2 = -f2*c1 + f1*c2 \n
+	 *
+	 * This is particularly useful when performing Orthogonal Transformations
+	 * where f1 = cos(theta) for some angle theta and f2 = sin(theta)
+	 *
+	 * @param c1 Column 1
+	 * @param c2 Column 2
+	 * @param f1 Scalar ( Usually cos(theta) )
+	 * @param f2 Scalar ( Usually sin(theta) )
+	 */
+	void transformCols(int c1, int c2, F f1, F f2) {
+		if (c1 < 0 || c1 >= getNumCols() || c2 < 0 || c2 >= getNumCols())
+			throw std::invalid_argument("Invalid column index");
+		F x1, x2;
+		for (int i = 0; i < getNumRows(); i++) {
+			x1 = mat[i][c1], x2 = mat[i][c2];
+			mat[i][c1] = f1 * x1 + f2 * x2;
+			mat[i][c2] = f1 * x2 - f2 * x1;
+		}
+	}
+	/**
+	 * Transforms row r1 and row r2 into \n
+	 * r1 = f1*r1 + f2*r2 \n
+	 * r2 = -f2*r1 + f1*r2 \n
+	 *
+	 * This is particularly useful when performing Orthogonal Transformations
+	 * where f1 = cos(theta) for some angle theta and f2 = sin(theta)
+	 *
+	 * @param r1 Row 1
+	 * @param r2 Row 2
+	 * @param f1 Scalar ( Usually cos(theta) )
+	 * @param f2 Scalar ( Usually sin(theta) )
+	 */
+	void transformRows(int r1, int r2, F f1, F f2) {
+		if (r1 < 0 || r1 >= getNumCols() || r2 < 0 || r2 >= getNumCols())
+			throw std::invalid_argument("Invalid column index");
+		F x1, x2;
+		for (int i = 0; i < getNumCols(); i++) {
+			x1 = mat[r1][i], x2 = mat[r2][i];
+			mat[r1][i] = f1 * x1 + f2 * x2;
+			mat[r2][i] = f1 * x2 - f2 * x1;
+		}
+	}
 public:
 	Matrix() { mat = {{0}}; }
 	Matrix(const int &rowSize, const int &colSize) { cleanReShape(rowSize, colSize); }
 	Matrix(const pair<int, int> &shape) { cleanReShape(shape.first, shape.second); }
 	Matrix(const vector<vector<F>> &matrix): mat(matrix) {}
 
+	/**
+	 * @brief Returns the reference to the element at (row, col)
+	 * @param i Row index (1-indexed)
+	 * @param j Column index (1-indexed)
+	 * @return Reference to the element A[i][j] (1-indexed)
+	 */
+	F& operator () (const int &row, const int &col) {
+		if (row <= 0 or row > getNumRows() or col <= 0 or col > getNumCols())
+			throw std::out_of_range("Index out of range");
+		return mat[row-1][col-1];
+	}
+
+	/**
+	 * @return The transpose of the matrix
+	 */
+	Matrix<F> getTranspose() const {
+		Matrix<F> ans(getNumCols(), getNumRows());
+		for (int i = 0; i < getNumRows(); i++)
+			for (int j = 0; j < getNumCols(); j++)
+				ans.mat[j][i] = mat[i][j];
+		return ans;
+	}
+
+	/**
+	 * @return Returns an identity Matrix of size n
+	 */
 	static Matrix<F> eye(const int &n) {
 		Matrix<F> ans(n, n);
 		for (int i = 0; i < n; i++) ans.mat[i][i] = 1;
 		return ans;
 	}
 
+	/**
+	 * @brief Converts into Null Matrix of size rowSize * colSize
+	 * @param rowSize
+	 * @param colSize
+	 */
 	void cleanReShape(const int &rowSize, const int &colSize) {
 		if (rowSize <= 0 or colSize <= 0)
 			throw std::invalid_argument("Row Size and Column Sizes must be positive");
@@ -54,34 +133,52 @@ public:
 	[[nodiscard]] int getNumCols() const { return mat[0].size(); }
 	[[nodiscard]] pair<int, int> shape() const { return { getNumRows(), getNumCols() }; }
 
-	friend Matrix<F> operator + (const Matrix<F> &a, const Matrix<F> &b) {
-		if (a.shape() != b.shape())
+	/**
+	 * @brief Matrix Addition
+	 * @param A Matrix A
+	 * @param B Matrix B
+	 * @return A * B
+	 */
+	friend Matrix<F> operator + (const Matrix<F> &A, const Matrix<F> &B) {
+		if (A.shape() != B.shape())
 			throw std::invalid_argument("The matrices must have the same shape for adding");
-		Matrix<F> ans(a.shape());
-		for (int i = 0; i < a.getNumRows(); i++)
-			for (int j = 0; j < a.getNumCols(); j++)
-				ans.mat[i][j] = a.mat[i][j] + b.mat[i][j];
+		Matrix<F> ans(A.shape());
+		for (int i = 0; i < A.getNumRows(); i++)
+			for (int j = 0; j < A.getNumCols(); j++)
+				ans.mat[i][j] = A.mat[i][j] + B.mat[i][j];
 		return ans;
 	}
 
-	friend Matrix<F> operator - (const Matrix<F> &a, const Matrix<F> &b) {
-		if (a.shape() != b.shape())
+	/**
+	 * @brief Matrix Subtraction
+	 * @param A Matrix A
+	 * @param B Matrix B
+	 * @return A * B
+	 */
+	friend Matrix<F> operator - (const Matrix<F> &A, const Matrix<F> &B) {
+		if (A.shape() != B.shape())
 			throw std::invalid_argument("The matrices must have the same shape for adding");
-		Matrix<F> ans(a.shape());
-		for (int i = 0; i < a.getNumRows(); i++)
-			for (int j = 0; j < a.getNumCols(); j++)
-				ans.mat[i][j] = a.mat[i][j] - b.mat[i][j];
+		Matrix<F> ans(A.shape());
+		for (int i = 0; i < A.getNumRows(); i++)
+			for (int j = 0; j < A.getNumCols(); j++)
+				ans.mat[i][j] = A.mat[i][j] - B.mat[i][j];
 		return ans;
 	}
 
-	friend Matrix<F> operator * (const Matrix<F> &a, const Matrix<F> &b) {
-		if (a.shape().second != b.shape().first)
+	/**
+	 * @brief Matrix multiplication
+	 * @param A Matrix A
+	 * @param B Matrix B
+	 * @return A * B
+	 */
+	friend Matrix<F> operator * (const Matrix<F> &A, const Matrix<F> &B) {
+		if (A.shape().second != B.shape().first)
 			throw std::invalid_argument("The matrix sizes not appropriate for multiplication");
-		Matrix<F> ans(a.getNumRows(), b.getNumCols());
-		for (int i = 0; i < a.getNumRows(); i++)
-			for (int j = 0; j < b.getNumCols(); j++)
-				for (int k = 0; k < a.getNumCols(); k++)
-					ans.mat[i][j] += a.mat[i][k] * b.mat[k][j];
+		Matrix<F> ans(A.getNumRows(), B.getNumCols());
+		for (int i = 0; i < A.getNumRows(); i++)
+			for (int j = 0; j < B.getNumCols(); j++)
+				for (int k = 0; k < A.getNumCols(); k++)
+					ans.mat[i][j] += A.mat[i][k] * B.mat[k][j];
 		return ans;
 	}
 
@@ -99,34 +196,6 @@ public:
 			o << '\n';
 		}
 		return o;
-	}
-
-	/**
-	 * Calculates and returns the Transformation Matrix which when applied
-	 * will convert the current matrix into Echelon Form
-	 * @param inplace Applies the changes in place
-	 * @return Transformation Matrix<F> T
-	 */
-	Matrix<F> transUTFailed(bool inplace = false) {
-		if (getNumRows() < getNumCols())
-			throw std::invalid_argument("The matrix must have more rows than columns");
-		vector<vector<F>> &A = inplace ? mat : * new vector<vector<F>>(mat);
-		Matrix<F> T = eye(getNumRows());
-		for (int i = 0; i < getNumRows(); i++) {
-			for (int j = i; A[j][i] != F(0) and  j < getNumRows(); j++) {
-				if (A.mat[j][i] != 0) {
-					A.swapRows(i, j);
-					T.swapRows(i, j);
-					break;
-				}
-			}
-			if (A[i][i] == F(0))
-				continue;
-			for (int j = i + 1; j < getNumRows(); j++) {
-
-			}
-		}
-		if (not inplace) delete *A;
 	}
 
 	/**
@@ -200,6 +269,8 @@ public:
 	/**
 	 * Uses elementary row operations to convert the matrix A into Diagonal Matrix
 	 *   and simultaneously applies the same operations to the matrix B
+	 * @param A Matrix A
+	 * @param B Matrix B
 	 */
 	static void reduceDiag(Matrix<F> &A, Matrix<F> &B) {
 		A.verifySquare();
@@ -207,6 +278,11 @@ public:
 		Matrix<F>::gaussUT(A, B);
 	}
 
+	/**
+	 * Uses elementary row operations to convert the matrix A into Diagonal Matrix
+	 * @param A Matrix
+	 * @param B Matrix
+	 */
 	static void reduceIdentity(Matrix<F> &A, Matrix &B) {
 		reduceDiag(A, B);
 		if (A.mat[A.getNumRows()-1][A.getNumCols()-1] == F(0))
@@ -218,6 +294,9 @@ public:
 		}
 	}
 
+	/**
+	 * @return The inverse of the matrix A using Gauss-Jordan Elimination
+	 */
 	Matrix<F> gaussianInverse() {
 		verifySquare();
 		Matrix<F> B = eye(getNumRows());
@@ -257,6 +336,44 @@ public:
 			}
 		}
 		return { L, U };
+	}
+
+	/**
+	 * Given's Method to find all the eigenvalues of a matrix
+	 *   (for symmetric matrices)\n
+	 * Only considers the Upper Triangular part of the matrix
+	 *   (if the matrix is not symmetric)\n
+	 * @return std::vector<F> List of all the eigen-values of A
+	 */
+	[[maybe_unused]] Matrix<F> givensAllEigenValues() {
+		verifySquare();
+		const int n = getNumRows();
+		Matrix<F> B = *this;
+		Matrix<F> S = eye(n);
+
+		// Converting A into tridigonal Matrix
+		for (int i = 0; i < n; i++) {
+			for (int j = i+2; j < n; j++) {
+				// Make aij = 0
+
+				// tan(theta) = aij / ai(i+1)
+				F d = std::sqrt(B.mat[i][j] * B.mat[i][j] + B.mat[i][i+1] * B.mat[i][i+1]);
+				F s = B.mat[i][j] / d;  // sin(theta)
+				F c = B.mat[i][i+1] / d;  // cos(theta)
+
+				// Orthogonal Transformations
+				B.transformCols(i+1, j, c, s);
+				B.transformRows(i+1, j, c, s);
+				S.transformCols(i+1, j, c, s);
+			}
+		}
+
+		/**
+		 * Now, S is an Orthogonal Matrix, B is a tridigonal matrix and
+		 * S' * A * S = B
+		 */
+
+		return B;
 	}
 };
 
