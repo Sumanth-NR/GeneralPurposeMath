@@ -9,6 +9,7 @@
 #include <utility>
 #include <tuple>
 #include <vector>
+#include <functional>
 #include <cmath>
 
 using std::vector;
@@ -18,13 +19,19 @@ using std::pair;
 namespace Sig {
 
 /**
+ * @brief Returns the absolute value
+ * @tparam T typename
+ */
+template<typename T>
+T abs(const T &a) { return a > T(0) ? a : -a; }
+
+/**
  * @brief Generic Matrix Class
  * @tparam F Field
  */
 template<typename F>
 class Matrix {
 	vector<vector<F>> mat;
-	const static Matrix<F> trash;
 protected:
 	/**
 	 * @brief Swaps rows ri and rj
@@ -45,6 +52,47 @@ protected:
 	void verifySquare() const {
 		if (getNumRows() != getNumCols())
 			throw std::invalid_argument("Matrix is not square");
+	}
+
+	/**
+	 * @brief Verifies if the matrix is a diagonally dominant matrix, throws an error otherwise
+	 * @throw std::invalid_argument if the matrix is not diagonally dominant
+	 */
+	void verifyDiagonallyDominant() const {
+		F norm1;
+		for (int i = 0; i < getNumRows(); i++) {
+			norm1 = 0;
+			for (int j = 0; j < getNumCols(); j++)
+				if (i != j)
+					norm1 += abs(mat[i][j]);
+			if (abs(mat[i][i]) < norm1)
+				throw std::invalid_argument("Matrix is not diagonally dominant");
+		}
+	}
+
+	/**
+	 * @brief Returns the 1 norm of a column matrix
+	 */
+	static F norm1(const Matrix<F> &m) {
+		if (m.getNumCols() != 1)
+			throw std::invalid_argument("Matrix is not a column matrix");
+		F ans = F(0);
+		for (int i = 0; i < m.getNumRows(); i++)
+			ans += abs(m.mat[i][0]);
+		return ans;
+	}
+
+	/**
+	 * @brief Returns the infinity norm of a row matrix
+	 */
+	static F normInf(const Matrix<F> &m) {
+		if (m.getNumCols() != 1)
+			throw std::invalid_argument("Matrix is not a column matrix");
+		F ans = F(0);
+		for (int i = 0; i < m.getNumCols(); i++)
+			if (abs(m.mat[0][i]) > ans)
+				ans = abs(m.mat[0][i]);
+		return ans;
 	}
 
 	/**
@@ -77,7 +125,7 @@ protected:
 			}
 		}
 	}
-	
+
 	/**
 	 * @brief Uses guassian row operations on A (simultaneously to B) to covert A into Lower Triangular
 	 */
@@ -141,7 +189,7 @@ protected:
 			mat[i][c2] = f1 * x2 - f2 * x1;
 		}
 	}
-	
+
 	/**
 	 * Transforms row r1 and row r2 into \n
 	 * r1 = f1*r1 + f2*r2 \n
@@ -165,38 +213,48 @@ protected:
 			mat[r2][i] = f1 * x2 - f2 * x1;
 		}
 	}
-	
+
 	/**
+	 * @brief General Iterative Scheme to perform X = f(X)
+	 *
 	 * Iteratively performs X -> AX + B until there is a convergence \n
 	 * Throws an error if the number of iterations exceeds the maximum number of iterations
+	 *
+	 * @param X Initial Guess
+	 * @param f Function to be iterated
+	 * @param verbose If true, prints the number of iterations and the error at every 10th iteration
+	 * @param eps Tolerance
+	 * @param maxIter Maximum number of iterations
+	 * @param norm Norm to be used to check for convergence
+	 * @return The number of iterations required to converge
+	 *
+	 * @note If you want to print more frequently, change Matrix::ITER_PRINT_FREQ
 	 */
-	static void iterateVector(Matrix<F> &X, const Matrix<F> &A, const Matrix<F> &B, int maxIter, F eps = F(1e-12)) {
-		A.verifySquare();
-		int n = A.getNumRows();
-		if (X.getNumCols() != 1 or X.getNumRows() != n or B.getNumCols() != 1 or B.getNumRows() != n)
-			throw std::invalid_argument("Invalid dimensions");
-		Matrix<F> X1 = A * X + B;
-		int iter = 0;
-		while (iter < maxIter) {
-			X = X1;
-			X1 = A * X + B;
-			iter++;
-
-			// Check for convergence
-			F normX = 0;
-			for (int i = 0; i < n; i++)
-				normX = normX < abs(X[i][0]) ? abs(X[i][0]) : normX;
-			F normX1 = 0;
-			for (int i = 0; i < n; i++)
-				normX1 = normX1 < abs(X1[i][0]) ? abs(X1[i][0]) : normX1;
-			if (normX1 < eps * normX)
-				return;
+	static int generalIterativeScheme(Matrix<F> &X, std::function<Matrix<F>(const Matrix<F>&)> f,
+			bool verbose, F eps = F(1e-9), int maxIter = 1e5,
+			std::function<F(const Matrix<F> &)> norm = Matrix<F>::norm1) {
+		Matrix<F> X1;
+		if (verbose)
+			std::cout << "Beginning Iteration...\n";
+		for (int i = 1; i <= maxIter; i++) {
+			X1 = X;
+			X = f(X1);
+			F err = norm(X - X1);
+			if (verbose and i % ITER_PRINT_FREQ == 0)
+				std::cout << "Iteration " << i << " Error = " << err << '\n';
+			if (norm(X - X1) < eps) {
+				if (verbose)
+					std::cout << "Final Error = " << err << '\n';
+					std::cout << "Converged in " << i << " iterations\n";
+				return i;
+			}
 		}
-		if (iter == maxIter)
-			throw std::runtime_error("Maximum number of iterations exceeded");
+		throw std::runtime_error("Max Iterations Reached");
 	}
 
 public:
+	static int ITER_PRINT_FREQ;
+
 	/**
 	 * @brief Creates a 1 by 1 matrix with value 0
 	 */
@@ -210,7 +268,16 @@ public:
 	/**
 	 * @brief Constructs a null matrix of size shape.first x shape.second
 	 */
-	Matrix(const pair<int, int> &shape) { cleanReShape(shape.first, shape.second); }
+	explicit Matrix(const pair<int, int> &shape) { cleanReShape(shape.first, shape.second); }
+
+	/**
+	 * @brief Constructs a column matrix with the given values
+	 */
+	Matrix(const vector<F> &col) {
+		cleanReShape(col.size(), 1);
+		for (int i = 0; i < col.size(); i++)
+			mat[i][0] = col[i];
+	}
 
 	/**
 	 * @brief Constructs a matrix using the given vector of vectors
@@ -247,6 +314,16 @@ public:
 	static Matrix<F> eye(const int &n) {
 		Matrix<F> ans(n, n);
 		for (int i = 0; i < n; i++) ans.mat[i][i] = 1;
+		return ans;
+	}
+
+	/**
+	 * @brief Returns a column matrix with all elements equal to 1
+	 */
+	static Matrix<F> ones(const int &n) {
+		Matrix<F> ans(n, 1);
+		for (int i = 0; i < n; i++)
+			ans.mat[i][0] = 1;
 		return ans;
 	}
 
@@ -337,6 +414,24 @@ public:
 	}
 
 	/**
+	 * @brief Scalar Multiplication, Returns a * B
+	 */
+	void operator *= (const F &a) {
+		for (int i = 0; i < getNumRows(); i++)
+			for (int j = 0; j < getNumCols(); j++)
+				mat[i][j] *= a;
+	}
+
+	/**
+	 * @brief Scalar Division, performs element wise division
+	 */
+	void operator /= (const F &a) {
+		for (int i = 0; i < getNumRows(); i++)
+			for (int j = 0; j < getNumCols(); j++)
+				mat[i][j] /= a;
+	}
+
+	/**
 	 * @brief Uses guassian row operations to convert A to identity and B to inv(A)*B
 	 * @note A is modified, if you want to preserve A, use A.gaussianInvTimes(B)
 	 */
@@ -408,6 +503,139 @@ public:
 	}
 
 	/**
+	 * @brief Returns the largest eigen value and eigen vector using Power Method
+	 * @return std::pair<F, Matrix<F>> Largest Eigen Value and Eigen Vector
+	 */
+	std::pair<F, Matrix<F>> powerMethod(bool verbose = false, double eps = F(1e-9)) {
+		verifySquare();
+		const int n = getNumRows();
+		Matrix<F> x = ones(n);
+
+		if (verbose)
+			std::cout << "Starting Power Method\n";
+
+		const Matrix<F> &A = *this;
+
+		/**
+		 * Run the iterative scheme x1 = Ax and divide x1 by infinity norm \n
+		 * This is done until the difference between 1-norm(x1) and 1-norm(x) is less than eps \n
+		 */
+		try {
+			// iterateVector(x, *this, Matrix<F>{n, 1}, 1000, eps, true);
+			generalIterativeScheme(x, [&A](const Matrix<F> &x) {
+				Matrix<F> x1 = A * x;
+				F a = F(0);
+				for (int i = 0; i < x1.getNumRows(); i++)
+					if (abs(x1.mat[i][0]) > abs(a))
+						a = x1.mat[i][0];
+				x1 /= a;
+				return x1;
+			}, verbose, eps);
+		} catch (std::exception& e) {
+			throw std::runtime_error("Matrix::powerMethod() : " + std::string(e.what()));
+		}
+
+		if (verbose)
+			std::cout << "Terminating Power Method\n";
+
+		/**
+		 * After getting the eigen vector from the iterative scheme \n
+		 * Eigen Value = a1 / a2 where \n
+		 * a1 = Element with largest magnitude in A*X \n
+		 * a2 = Element with largest magnitude in X \n
+		 */
+		auto x1 = A * x;
+		F a1 = 0, a2 = 0;
+		for (int i = 0; i < n; i++) {
+			if (abs(x1.mat[i][0]) > abs(a1))
+				a1 = x1.mat[i][0];
+			if (abs(x.mat[i][0]) > abs(a2))
+				a2 = x.mat[i][0];
+		}
+
+		return { a1/a2 , x };
+	}
+
+	/**
+	 * @brief Solves Ax = b using Jacobi Iterative Scheme
+	 * @return Returns column vector x
+	 */
+	Matrix<F> solveJacobi(const Matrix<F> &b, bool verbose = false, double eps = F(1e-9)) {
+		verifySquare();
+		verifyDiagonallyDominant();
+		if (b.getNumCols() != 1)
+			throw std::runtime_error("Matrix::solveGaussSeidel() : b must be a column vector");
+		const int n = getNumRows();
+
+		if (verbose)
+			std::cout << "Starting Jacobi Iterative Scheme\n";
+
+		Matrix<F> X = ones(n);
+		const Matrix<F> &A = *this;
+
+		try {
+			generalIterativeScheme(X,  [&A, &b, &n](const Matrix<F> &x) {
+				  Matrix<F> x1(x.shape());
+				  for (int i = 0; i < n; i++) {
+					  for (int j = 0; j < n; j++)
+						  if (i != j)
+							  x1.mat[i][0] -= A.mat[i][j] * x.mat[j][0];
+					  x1.mat[i][0] += b.mat[i][0];
+					  x1.mat[i][0] /= A.mat[i][i];
+				  }
+				  return x1;
+			  }, verbose, eps);
+		} catch (std::exception& e) {
+			throw std::runtime_error("Matrix::solveGaussSeidel() : " + std::string(e.what()));
+		}
+
+		if (verbose)
+			std::cout << "Terminating Jacobi Iterative Scheme\n";
+
+		return X;
+	}
+
+	/**
+	 * @brief Solves Solves Ax = b using Gauss-Seidel Iterative Scheme
+	 * @return Returns column vector x
+	 */
+	Matrix<F> solveGaussSeidel(const Matrix<F> &b, bool verbose, double eps = F(1e-9)) {
+		verifySquare();
+		verifyDiagonallyDominant();
+		if (b.getNumCols() != 1)
+			throw std::runtime_error("Matrix::solveGaussSeidel() : b must be a column vector");
+		const int n = getNumRows();
+
+		if (verbose)
+			std::cout << "Starting Gauss-Seidel Iterative Scheme\n";
+
+		Matrix<F> X = ones(n);
+		auto A = *this;
+
+		try {
+			generalIterativeScheme(X,  [&A, &b, &n](const Matrix<F> &x) {
+				  Matrix<F> x1(x.shape());
+				  for (int i = 0; i < n; i++) {
+					  for (int j = 0; j < i; j++)
+						  x1.mat[i][0] -= A.mat[i][j] * x1.mat[j][0];
+					  for (int j = i+1; j < n; j++)
+						  x1.mat[i][0] -= A.mat[i][j] * x.mat[j][0];
+					  x1.mat[i][0] += b.mat[i][0];
+					  x1.mat[i][0] /= A.mat[i][i];
+				  }
+				  return x1;
+			  }, verbose, eps);
+		} catch (std::exception& e) {
+			throw std::runtime_error("Matrix::solveGaussSeidel() : " + std::string(e.what()));
+		}
+
+		if (verbose)
+			std::cout << "Terminating Gauss-Seidel Iterative Scheme\n";
+
+		return X;
+	}
+
+	/**
 	 * Given's Method to find all the eigenvalues of a matrix
 	 *   (for symmetric matrices)\n
 	 * Only considers the Upper Triangular part of the matrix
@@ -469,5 +697,8 @@ public:
 		return B;
 	}
 };
+
+template <typename F>
+int Matrix<F>::ITER_PRINT_FREQ = 10;
 
 }
