@@ -7,7 +7,6 @@
 #pragma once
 
 #include <iostream>
-using namespace std;
 
 using Int = long long int;
 
