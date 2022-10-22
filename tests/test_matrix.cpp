@@ -1,3 +1,11 @@
+/**
+ * @file test_matrix.cpp
+ * @brief Test matrix class
+ * @author Sumanth N R
+ *
+ * @note Change the values of DEBUG to run different tests
+ */
+
 #include <iostream>
 #include <iomanip>
 #include "matrix.hpp"
@@ -49,7 +57,7 @@ int main() {
 	                  {3, 7, 4, 5}
 	});
 	auto E = A.givensAllEigenValues();
-	std::cout << E << '\n';
+//	std::cout << E << '\n';
 
 #elif DEBUG == 7
 	Matrix<double> A({{1, 6, 7}, {20, 1, 36}, {52, 1024, 0.5}});

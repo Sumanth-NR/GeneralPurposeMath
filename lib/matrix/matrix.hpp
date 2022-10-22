@@ -252,6 +252,28 @@ protected:
 		throw std::runtime_error("Max Iterations Reached");
 	}
 
+	/**
+	 * To solve the Sturm Sequence, we need to find the roots of the polynomial \n
+	 * p(x) = det(A - xI) \n
+	 * where A is a square matrix and I is the identity matrix of the same size as A \n
+	 * This function returns the roots of p(x) \n
+	 */
+	static std::vector<F> solveTridigonalForEigenValues(const Matrix<F> &A) {
+		A.verifySquare();
+		int n = A.getNumRows();
+		Matrix<F> I = eye(n);
+		std::vector<F> roots;
+
+		// Checking for Sign Changes
+		for (int i = 0; i < n; i++) {
+			Matrix<F> B = A - I*A.mat[i][i];
+			roots.push_back(A.mat[i][i]);
+			roots.push_back(-A.mat[i][i]);
+		}
+
+		return roots;
+	}
+
 public:
 	static int ITER_PRINT_FREQ;
 
@@ -389,6 +411,24 @@ public:
 				for (int k = 0; k < A.getNumCols(); k++)
 					ans.mat[i][j] += A.mat[i][k] * B.mat[k][j];
 		return ans;
+	}
+
+	/**
+	 * @brief Scalar Multiplication, Returns A * c
+	 */
+	friend Matrix<F> operator * (const Matrix<F> &A, const F &c) {
+		Matrix<F> ans(A.shape());
+		for (int i = 0; i < A.getNumRows(); i++)
+			for (int j = 0; j < A.getNumCols(); j++)
+				ans.mat[i][j] *= A.mat[i][j] * c;
+		return ans;
+	}
+
+	/**
+	 * @brief Scalar Multiplication, Returns c * A
+	 */
+	friend Matrix<F> operator * (const F &c, const Matrix<F> &A) {
+		return A * c;
 	}
 
 	/**
@@ -642,7 +682,7 @@ public:
 	 *   (if the matrix is not symmetric)\n
 	 * @return std::vector<F> List of all the eigen-values of A
 	 */
-	[[maybe_unused]] Matrix<F> givensAllEigenValues() {
+	[[maybe_unused]] vector<F> givensAllEigenValues() {
 		verifySquare();
 		const int n = getNumRows();
 		Matrix<F> B = *this;
@@ -651,7 +691,7 @@ public:
 		/**
 		 * We need to convert A into a Tridigonal Matrix using Orthogonal Transformations \n
 		 *  (i.e. B = S^T * A * S) for some orthogonal matrix S and a tridigonal matrix B \n
-		 * Start from making a[i][j] = 0 from left to right and top to bottom \n
+		 * Start from making a[i][j] = 0 from top to bottom and left to right \n
 		 */
 		for (int i = 0; i < n; i++) {
 			for (int j = i+2; j < n; j++) {
@@ -694,7 +734,7 @@ public:
 		 * S' * A * S = B
 		 */
 
-		return B;
+		return solveTridigonalForEigenValues(B);
 	}
 };
 
