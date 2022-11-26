@@ -8,10 +8,10 @@
 
 #include <iostream>
 
-using Int = long long int;
-
 
 namespace Sig {
+
+using Int = long long int;
 
 class ModInt {
     Int val;
