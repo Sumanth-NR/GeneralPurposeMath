@@ -1,3 +1,6 @@
+add_executable(test_misc test_misc.cpp)
+target_link_libraries(test_misc sig)
+
 add_executable(test_polynomial test_polynomial.cpp)
 target_link_libraries(test_polynomial polynomial)
 target_link_libraries(test_polynomial number_theory)
