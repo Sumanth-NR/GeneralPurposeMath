@@ -7,3 +7,7 @@ target_link_libraries(test_number_theory number_theory)
 
 add_executable(test_matrix test_matrix.cpp)
 target_link_libraries(test_matrix sig)
+
+add_executable(test_poly_factor test_poly_factor.cpp)
+target_link_libraries(test_poly_factor polynomial)
+target_link_libraries(test_poly_factor number_theory)
