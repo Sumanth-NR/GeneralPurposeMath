@@ -27,34 +27,31 @@ public:
     // Constructors
 
     /**
-    * @brief Default Constructor, Creates a Polynomial of degree 0, with value 0
-    * @tparam T Typename
-    */
+     * @brief Default Constructor, Creates a Polynomial of degree 0, with value 0
+     */
     Polynomial() {
         this->cof.resize(1);
     }
 
     /**
-    * @brief Copy Constructor
-    * @tparam T Typename
-    * @param p
-    */
+     * @brief Copy Constructor
+     */
     Polynomial(const Polynomial<T> &p) {
         for (const T &i: p.cof)
             this->cof.push_back(i);
     }
 
     /**
-    * @tparam T Typename
-    * @param v The co-efficients vector where v[i] is the co-efficient of x^i
-    */
+     * @brief Converts a co-efficient vector where v[i] is the
+     * co-efficient of x^i to a Polynomial
+     */
     Polynomial(const std::vector<T> &v) {
         if (not v.empty()) for (const T &i: v) this->cof.push_back(i);
         else Polynomial<T>();
     }
 
     /**
-     * @param x Initial Value
+     * @brief Creates a Polynomial of degree 0, with value x
      */
     Polynomial(const T &x) {
         cof.resize(1, x);
@@ -63,15 +60,15 @@ public:
     // Some helper functions
 
     /**
-     * @return The coefficient vector
+     * @brief Returns the coefficient vector
      */
     std::vector<T> getCoEfs() {
         return cof;
     }
 
     /**
-    * @return Degree of the Polynomial (Includes the leading 0 co-efficients if not cleaned)
-    */
+     * @brief Returns degree of the Polynomial (Includes the leading 0 co-efficients if not cleaned)
+     */
     [[nodiscard]] int degree() const {
         return cof.size() - 1;
     }
@@ -79,22 +76,35 @@ public:
     /**
     * @brief Removes the initial co-efficients with 0 value
     */
-    void clean() {
+    Polynomial<T>& clean() {
         while (cof.size() > 1 and cof.back() == T(0))
             cof.pop_back();
+		return *this;
     }
 
     /**
-    * @return The leading co-efficient
-    */
+     * @brief Returns the leading co-efficient
+     */
     T lead() const {
         return cof.back();
     }
 
+	/**
+	 * @brief Checks if the Polynomial is zero
+	 */
+	[[nodiscard]] bool isZero() const {
+		return { cof.size() == 1 and cof[0] == T(0) };
+	}
+
+	/**
+	 * @brief Checks if the Polynomial constant with constant val
+	 */
+	[[nodiscard]] bool isConstant(const T &val = 1) const {
+		return { cof.size() == 1 and cof[0] == T(val) };
+	}
+
     /**
-     * @brief Updates a co-efficient to the given value
-     * @param k Index
-     * @param newVal new co-efficient
+     * @brief Updates the co-efficient to the given value
      */
     void setCoef(int k, const T &newVal) {
         if (k < 0 or k > degree()) return;
@@ -102,9 +112,7 @@ public:
     }
 
     /**
-     * @brief Evaluates the input_helper at x
-     * @param x
-     * @return P(x)
+     * @brief Evaluates the input_helper at x and returns P(x)
      */
     virtual T eval(const T &x) {
         T ans = T(0), cur = T(1);
@@ -114,10 +122,9 @@ public:
     }
 
     /**
-     * @brief The differential of the polynomial
-     * @return
+     * @brief Returns the differential of the polynomial
      */
-    static Polynomial<T> ddx(const Polynomial<T> &p) {
+    static Polynomial<T> differential(const Polynomial<T> &p) {
         std::vector<T> nP(p.degree()-1 + 1);
         for (int i = 1; i <= p.degree(); i++)
             nP[i-1] = p.cof[i] * T(i);
@@ -125,9 +132,8 @@ public:
     }
 
     /**
-    * Multiplies x^k to the polynomial
-    * @param k Power of x to multiply, k >= 0
-    */
+     * @brief Multiplies x^k to the polynomial
+     */
     void multiplyX(int k) {
         if (k <= 0) return;
         for (int i = 0; i < k; i++)
@@ -161,31 +167,39 @@ public:
     // Operator Overloads
 
     /**
-    * @brief Scalar Multiplication
-    * @param c Scalar
-    */
-    void operator *= (const T &c) {
-        for (T &i: this->cof) i *= c;
-    }
-
-    /**
-    * @brief Scalar Division
-    * @param c Scalar
-    */
-    void operator /= (const T &c) {
-        for (T &i: this->cof) i /= c;
-    }
-
-    /**
-     * @brief Modulo
-     * @param p Polynomial
+     * @brief Scalar Multiplication
      */
-    void operator %= (const Polynomial<T> &p) {
-        *this = divide(*this, p).second;
+    Polynomial<T>& operator *= (const T &c) {
+        for (T &i: this->cof) i *= c;
+		return *this;
+    }
+
+	/**
+	 * @brief Polynomial Multiplication
+	 */
+	Polynomial<T>& operator *= (const Polynomial<T> &p) {
+		*this = *this * p;
+		return *this;
+	}
+
+    /**
+     * @brief Scalar Division
+     */
+	Polynomial<T>& operator /= (const T &c) {
+        for (T &i: this->cof) i /= c;
+		return *this;
     }
 
     /**
-     * @return The coefficient of x^i
+     * @brief Polynomial Modulo
+     */
+	Polynomial<T>& operator %= (const Polynomial<T> &p) {
+        *this = divide(*this, p).second;
+		return *this;
+    }
+
+    /**
+     * @brief Returns the coefficient of x^i
      */
     T operator [] (const int &i) const {
         if (i < 0 or i > degree()) return T(0);
@@ -193,9 +207,8 @@ public:
     }
 
     /**
-    * @brief Generic Addition
-    * @return Polynomial p1 + p2
-    */
+     * @brief Generic Addition, returns p1 + p2
+     */
     friend Polynomial<T> operator + (const Polynomial<T>& p1, const Polynomial<T>& p2) {
         Polynomial<T> ans;
         ans.cof.resize(max<int>(p1.degree(), p2.degree()) + 1);
@@ -206,9 +219,8 @@ public:
     }
 
     /**
-    * @brief Generic Subtraction
-    * @return Polynomial p1 - p2
-    */
+     * @brief Generic Subtraction, returns p1 - p2
+     */
     friend Polynomial<T> operator - (const Polynomial<T>& p1, const Polynomial<T>& p2) {
         Polynomial<T> ans;
         ans.cof.resize(max<int>(p1.degree(), p2.degree()) + 1);
@@ -219,9 +231,8 @@ public:
     }
 
     /**
-    * @brief Generic Multiplication
-    * @return Polynomial p1 * p2
-    */
+     * @brief Generic Multiplication, returns p1 * p2
+     */
     friend Polynomial<T> operator * (const Polynomial<T>& p1, const Polynomial<T>& p2) {
         Polynomial<T> ans;
         ans.cof.resize(p1.degree() + p2.degree() + 1);
@@ -233,36 +244,28 @@ public:
     }
 
     /**
-    * @brief Generic Division, Reminder Ignored
-    * @return Quotient Polynomial when p1 is divided by p2
-    */
+     * @brief Generic Division with ignored reminder, returns p1 / p2
+     */
     friend Polynomial<T> operator / (const Polynomial<T>& p1, const Polynomial<T>& p2) {
         return Polynomial<T>::divide(p1, p2).first;
     }
 
     /**
-    * @brief Generic Modulo
-    * @return Reminder Polynomial when p1 is divided by p2
-    */
+     * @brief Generic Modulo, returns p1 % p2
+     */
     friend Polynomial<T> operator % (const Polynomial<T>& p1, const Polynomial<T>& p2) {
         return Polynomial<T>::divide(p1, p2).second;
     }
 
     /**
-     * @brief Generic Equality Check
-     * @param p1 Polynomial 1
-     * @param p2 Polynomial 2
-     * @return true if p1 == p2, false otherwise
+     * @brief Returns true if all the coefficients are the same. False otherwise
      */
     friend bool operator == (const Polynomial<T> &p1, const Polynomial<T> &p2) {
         return p1.cof == p2.cof;
     }
 
     /**
-     * @brief Generic Inequality Check
-     * @param p1 Polynomial 1
-     * @param p2 Polynomial 2
-     * @return true if p1 != p2, false otherwise
+     * @brief Returns false if all the coefficients are the same. True otherwise
      */
     friend bool operator != (const Polynomial<T> &p1, const Polynomial<T> &p2) {
         return p1.cof != p2.cof;
