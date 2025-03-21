@@ -1,3 +1,9 @@
+/**
+* @file factorize_zp.hpp
+* @author Sumanth N R
+* @note This is a part of the General Purpose Library
+*/
+
 #pragma once
 #include <polynomial.hpp>
 #include "simple_functions.hpp"
@@ -109,13 +115,13 @@ std::vector<Polynomial<ModInt>> factorizeUniqueDegree_i(const Polynomial<ModInt>
 	 * Pick a random g(x) in Zp[x] of degree less than f(x)
 	 */
 
-	Polynomial<ModInt> g = getRandomPolynomial(getRandom(1, f.degree()));
 	Int pPowI = 1;
 	for (Int i = 1; i <= I; i++) pPowI *= ModInt::M;
 	Int b = (pPowI - 1) / 2;
 
 	Polynomial<ModInt> h1(1), h2(1), t;
 	while (h1.clean().isConstant() or h2.clean().isConstant()) {
+		Polynomial<ModInt> g = getRandomPolynomial(getRandom(1, f.degree()));
 		t = modExp(g, f, b) - std::vector<ModInt>{1};
 		h1 = gcd(f, t);
 		h2 = f / h1;

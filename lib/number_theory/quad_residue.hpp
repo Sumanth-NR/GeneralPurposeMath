@@ -1,3 +1,9 @@
+/**
+* @file quad_residue.hpp
+* @author Sumanth N R
+* @note This is a part of the General Purpose Library
+*/
+
 #pragma once
 #include "mod_int.hpp"
 
